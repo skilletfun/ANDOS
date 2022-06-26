@@ -25,6 +25,7 @@ Window {
 
     Button {
         id: reset
+        visible: false
         width: 60
         height: width
         background: Rectangle { radius: reset.width/2; border.width: 1; color: reset.down ? downcolor : 'white' }
@@ -63,52 +64,59 @@ Window {
         horizontalAlignment: Text.AlignHCenter
     }
 
-    Button {
-        id: alice_pbtn
+    Flipable {
+        id: alice_flip
+        property bool flipped: false
         width: 200
         height: width
-        background: Rectangle { radius: 50; border.width: 1; color: alice_pbtn.down ? downcolor : 'white' }
         anchors.horizontalCenter: alice_lbl.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
 
-        property bool solved: false
-
-        Text {
-            id: alice_value
-            clip: true
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: 10
-            horizontalAlignment: Text.AlignHCenter
-            anchors.verticalCenter: parent.verticalCenter
-            font.family: 'Arial'
-            font.pointSize: 20
-            font.bold: true
-        }
-
-        Text {
-            visible: alice_value.text != ''
-            text: 'Нажмите, чтобы\n' + (parent.solved ? 'отправить':'вычислить')
-            font.family: 'Arial'
-            font.pointSize: 12
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 10
-            horizontalAlignment: Text.AlignHCenter
-        }
-
-        onReleased: {
-            if (!solved)
-            {
-                alice_value.text = crypter.decrypt_alice(alice_value.text);
-                solved = true;
-            }
-            else if (root.step == 4)
-            {
-                root.step = 5;
-                bob_value.text = alice_value.text;
+        front: FlipButton {
+            id: alice_pbtn_1
+            anchors.fill: parent
+            solved: true
+            notice_visible: root.step < 5
+            onReleased: {
+                if (root.step != 5)
+                {
+                    bob_pbtn_2.value = value;
+                    bob_flip.flipped = !bob_flip.flipped;
+                    root.step = 5;
+                }
             }
         }
+
+        back: FlipButton {
+            id: alice_pbtn_2
+            notice_visible: root.step < 5
+            anchors.fill: parent
+            onReleased: {
+                if (root.step != 5)
+                {
+                    alice_flip.flipped = !alice_flip.flipped;
+                    alice_pbtn_1.value = crypter.decrypt_alice(value);
+                }
+            }
+        }
+
+         transform: Rotation {
+             id: rotation
+             origin.x: alice_flip.width/2
+             origin.y: alice_flip.height/2
+             axis.x: 0; axis.y: 1; axis.z: 0     // set axis.y to 1 to rotate around y-axis
+             angle: 0    // the default angle
+         }
+
+         states: State {
+             name: "back"
+             PropertyChanges { target: rotation; angle: 180 }
+             when: alice_flip.flipped
+         }
+
+         transitions: Transition {
+             NumberAnimation { target: rotation; property: "angle"; duration: 1000 }
+         }
     }
 
     ListView {
@@ -117,12 +125,13 @@ Window {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         clip: true
-        anchors.left: alice_pbtn.right
+        anchors.left: alice_flip.right
         anchors.right: vline.left
         anchors.margins: 15
         anchors.leftMargin: 30
         spacing: 10
         model: alice_model
+        add: Transition { PropertyAnimation { properties: 'y'; from: -50; } }
         delegate: Button {
             id: btn
             width: 60
@@ -151,7 +160,7 @@ Window {
         font.pointSize: 20
         font.bold: true
         anchors.left: parent.left
-        anchors.top: alice_pbtn.top
+        anchors.top: alice_flip.top
         anchors.margins: 14
         onReleased: {
             root.step = 1;
@@ -172,7 +181,7 @@ Window {
         font.pointSize: 20
         font.bold: true
         anchors.left: parent.left
-        anchors.bottom: alice_pbtn.bottom
+        anchors.bottom: alice_flip.bottom
         anchors.margins: 20
         onReleased: {
             root.step = 2;
@@ -197,55 +206,58 @@ Window {
         horizontalAlignment: Text.AlignHCenter
     }
 
-    Button {
-        id: bob_pbtn
+    Flipable {
+        id: bob_flip
+        property bool flipped: false
         width: 200
         height: width
-        background: Rectangle { radius: 50; border.width: 1;
-            color: bob_pbtn.down ? downcolor : bob_notice.text == 'Результат' ? '#C6F66F' : 'white' }
         anchors.horizontalCenter: bob_lbl.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
 
-        property bool solved: false
-
-        Text {
-            id: bob_value
-            clip: true
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: 10
-            horizontalAlignment: Text.AlignHCenter
-            anchors.verticalCenter: parent.verticalCenter
-            font.family: 'Arial'
-            font.pointSize: 20
-            font.bold: true
-        }
-
-        Text {
-            id: bob_notice
-            property bool result: false
-            visible: bob_value.text != ''
-            text: result ? 'Результат' : 'Нажмите, чтобы\n' + (parent.solved ? 'отправить' : "вычислить")
-            font.family: 'Arial'
-            font.pointSize: 12
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 10
-            horizontalAlignment: Text.AlignHCenter
-        }
-
-        onReleased: {
-            if (!solved)
-            {
-                bob_value.text = crypter.crypt_bob(bob_value.text);
-                solved = true;
-            }
-            else if (root.step == 3)
-            {
-                root.step = 4;
-                alice_value.text = bob_value.text;
+        front: FlipButton {
+            id: bob_pbtn_1
+            notice_visible: root.step < 5
+            anchors.fill: parent
+            solved: true
+            onReleased: {
+                if (root.step != 5)
+                {
+                    alice_pbtn_2.value = value;
+                    alice_flip.flipped = true;
+                }
             }
         }
+
+        back: FlipButton {
+            id: bob_pbtn_2
+            notice_visible: root.step < 5
+            anchors.fill: parent
+            onReleased: {
+                if (root.step != 5)
+                {
+                    bob_flip.flipped = !bob_flip.flipped;
+                    bob_pbtn_1.value = crypter.crypt_bob(value);
+                }
+            }
+        }
+
+         transform: Rotation {
+             id: rotation_2
+             origin.x: bob_flip.width/2
+             origin.y: bob_flip.height/2
+             axis.x: 0; axis.y: 1; axis.z: 0     // set axis.y to 1 to rotate around y-axis
+             angle: 0    // the default angle
+         }
+
+         states: State {
+             name: "back"
+             PropertyChanges { target: rotation_2; angle: 180 }
+             when: bob_flip.flipped
+         }
+
+         transitions: Transition {
+             NumberAnimation { target: rotation_2; property: "angle"; duration: 1000 }
+         }
     }
 
     ListView {
@@ -254,12 +266,13 @@ Window {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         clip: true
-        anchors.right: bob_pbtn.left
+        anchors.right: bob_flip.left
         anchors.left: vline.right
         anchors.margins: 15
         anchors.rightMargin: 30
         spacing: 10
         model: bob_model
+        add: Transition { PropertyAnimation { properties: 'y'; from: -50; } }
         delegate: Button {
             id: dbtn
             width: 60
@@ -272,7 +285,8 @@ Window {
             onReleased: {
                 if (root.step == 2)
                 {
-                    bob_value.text = modelData;
+                    bob_flip.flipped = true;
+                    bob_pbtn_2.value = modelData;
                     root.step = 3;
                     root.index = index;
                 }
@@ -296,10 +310,13 @@ Window {
         font.bold: true
         anchors.right: parent.right
         anchors.rightMargin: 20
-        anchors.verticalCenter: bob_pbtn.verticalCenter
+        anchors.verticalCenter: bob_flip.verticalCenter
         onReleased: {
-            bob_value.text = crypter.decrypt_bob(bob_value.text);
-            bob_notice.result = true;
+            bob_flip.flipped = !bob_flip.flipped;
+            bob_pbtn_1.value = crypter.decrypt_bob(bob_pbtn_2.value);
+            bob_pbtn_1.bg = '#C6F66F';
+            bob_pbtn_1.notice = 'Результат';
+            root.step = 6;
         }
     }
 }
